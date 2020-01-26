@@ -27,16 +27,17 @@ class sdist_dsc(Command):
         ('compat=', None, 'Debhelper compatibility level [default: 10]'),
         ('service=', None, 'Systemd service description. (can only be given in setup.py options)'),
         ('extras=', None, 'Extras to include in Depends: [default: \'\']'),
-
+        ('dh-python-options=', None, 'Options to give dh_python3 [default: None]'),
+        ('dh-shlibdeps-options=', None, 'Options to give dh_shlibdeps [default: None]'),
     ]
-
-    boolean_options = []
 
     def initialize_options(self):
         self.package_name = None
         self.debian_distribution = 'unstable'
         self.dist_dir = 'dist'
         self.python_buildsystem = 'pybuild'
+        self.dh_python_options = ''
+        self.dh_shlibdeps_options = ''
         self.debian_revision = 1
         self.debian_section = 'python'
         self.debian_urgency = 'low'
@@ -106,6 +107,8 @@ class sdist_dsc(Command):
             'python_buildsystem': self.python_buildsystem,
             'urgency': self.debian_urgency,
             'distribution': self.debian_distribution,
+            'dh_python_options': self.dh_python_options,
+            'dh_shlibdeps_options': self.dh_shlibdeps_options,
             'time_now': now_rfc822,
             'package_version': package_version,
             'author': self.distribution.get_author(),
@@ -208,7 +211,11 @@ class add_extras(Command):
     def run(self):
         install_command = self.get_finalized_command('install')
         for e in self.extras:
-            extras = self.distribution.extras_require[e]
+            try:
+                extras = self.distribution.extras_require[e]
+            except KeyError:
+                log.fatal('Extra \'{}\' not found'.format(e))
+                raise
             install_command.distribution.install_requires.extend(extras)
 
 

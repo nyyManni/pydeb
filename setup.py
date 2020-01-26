@@ -1,17 +1,30 @@
 """setup file for pydeb. """
+import os
+
 from setuptools import setup, find_packages
 
 
+# Read metadata from the package
+meta = {}
+package_dir = 'src'
+packages = find_packages(where='src')
+for p in packages:
+    path = os.path.join(package_dir, *p.split('.'))
+    candidate = os.path.join(path, '_meta.py')
+    if os.path.isfile(candidate):
+        with open(candidate, 'rt') as f:
+            exec(f.read(), meta)  # pylint: disable=exec-used
+
 setup(name='pydeb',
-      version='0.1',
+      version=meta['__version__'],
       description='A setuptools extension to generate debian package files.',
       long_description='',
-      author='Henrik Nyman',
+      author=meta['__author__'],
       url='https://github.com/nyyManni/pydeb',
       author_email='h@nyymanni.com',
-      license='MIT',
-      packages=find_packages(where='src'),
-      package_dir={'': 'src'},
+      license=meta['__license__'],
+      packages=packages,
+      package_dir={'': package_dir},
       keywords='deb build setup debian dist',
       include_package_data=True,
       platforms='POSIX',

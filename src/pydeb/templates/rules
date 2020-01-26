@@ -15,6 +15,13 @@ override_dh_auto_build:
 override_dh_auto_install:
 	python3 setup.py add_extras --extras={{extras}} install --force --root={{root_dir}} --no-compile -O0 --install-layout=deb
 
+override_dh_python3:
+	dh_python3 $^ {{dh_python_options}}
+
+override_dh_shlibdeps:
+	dh_shlibdeps $^ {{dh_shlibdeps_options}}
+
+
 {% if systemd_services -%}
 override_dh_installinit:
 	dh_installinit
