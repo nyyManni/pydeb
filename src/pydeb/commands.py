@@ -6,6 +6,7 @@ from distutils import log
 from datetime import datetime
 from email.utils import format_datetime
 
+import shutil
 import os
 import subprocess
 import jinja2
@@ -25,7 +26,7 @@ class sdist_dsc(Command):
         ('debian-urgency=', None, 'Debian section [default: low]'),
         ('dist-dir=', None, 'Directory for the build [default \'dist\']'),
         ('compat=', None, 'Debhelper compatibility level [default: 10]'),
-        ('service=', None, 'Systemd service description. (can only be given in setup.py options)'),
+        ('systemd-unit-files=', None, 'Systemd unit files, comma-separated.'),
         ('extras=', None, 'Extras to include in Depends: [default: \'\']'),
         ('dh-python-options=', None, 'Options to give dh_python3 [default: None]'),
         ('dh-shlibdeps-options=', None, 'Options to give dh_shlibdeps [default: None]'),
@@ -43,6 +44,7 @@ class sdist_dsc(Command):
         self.debian_urgency = 'low'
         self.compat = 10
         self.extras = ''
+        self.systemd_unit_files = ''
 
     def finalize_options(self):
         if self.package_name is None:
@@ -52,6 +54,15 @@ class sdist_dsc(Command):
                                                     .replace('.', '-'))
         self.debian_revision = int(self.debian_revision)
         self.compat = int(self.compat)
+
+        _files = []
+        if self.systemd_unit_files:
+            for f in self.systemd_unit_files.split(','):
+                if not os.path.isfile(f):
+                    raise FileNotFoundError(f)
+                if f:
+                    _files.append(f)
+        self.systemd_unit_files = _files
 
     def run(self):
 
@@ -83,14 +94,25 @@ class sdist_dsc(Command):
         self.run_command('sdist')
 
         log.info('moving the unpacked source under dist..')
-        os.rename(self.distribution.get_fullname(),
-                  os.path.join(self.dist_dir, self.distribution.get_fullname()))
+        dist_source = os.path.join(self.dist_dir, self.distribution.get_fullname())
+        if os.path.isdir(dist_source):
+            log.info('removing the old dist..')
+            shutil.rmtree(dist_source)
+        os.rename(self.distribution.get_fullname(), dist_source)
 
         os.mkdir(debian_dir)
 
         # Prepare jinja2-renderer
         template_dir = os.path.join(os.path.dirname(__file__), 'templates')
         env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir))
+
+        systemd_services = []
+        for sd_file in self.systemd_unit_files:
+            shutil.copyfile(sd_file,
+                            os.path.join(debian_dir,
+                                         '{}.{}'.format(self.package_name,
+                                                        os.path.basename(sd_file))))
+            systemd_services.append(os.path.splitext(os.path.basename(sd_file))[0])
 
         data = {
             'source_name': self.distribution.get_name(),
@@ -101,6 +123,7 @@ class sdist_dsc(Command):
             'dependencies': dependencies,
             'package_name': self.package_name,
             'description': self.distribution.get_description(),
+            'systemd_services': systemd_services,
             'long_description': self.distribution.get_long_description(),
             'root_dir': 'debian/{}'.format(self.package_name),
             'pydeb_version': __version__,

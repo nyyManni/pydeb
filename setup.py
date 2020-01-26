@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 # Read metadata from the package
 meta = {}
 package_dir = 'src'
-packages = find_packages(where='src')
+packages = find_packages(where=package_dir)
 for p in packages:
     path = os.path.join(package_dir, *p.split('.'))
     candidate = os.path.join(path, '_meta.py')

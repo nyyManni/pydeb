@@ -26,6 +26,6 @@ override_dh_shlibdeps:
 override_dh_installinit:
 	dh_installinit
         {%- for service in systemd_services %}
-	dh_installsystemd --name {{service.name}}
+	dh_installsystemd --name {{service}}
         {%- endfor %}
 {%-endif %}
