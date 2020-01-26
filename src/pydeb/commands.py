@@ -19,10 +19,15 @@ class sdist_dsc(Command):
     user_options = [
         ('package-name=', None, 'Package name [default: python3-<module>]'),
         ('debian-distribution=', None, 'Target distribution [default: unstable]'),
+        ('python-buildsystem=', None, 'Buildsystem to use [default: pybuild]'),
         ('debian-revision=', None, 'Debian revision number [default: 1]'),
+        ('debian-section=', None, 'Debian section [default: python]'),
+        ('debian-urgency=', None, 'Debian section [default: low]'),
         ('dist-dir=', None, 'Directory for the build [default \'dist\']'),
         ('compat=', None, 'Debhelper compatibility level [default: 10]'),
-        ('service=', None, 'Systemd service description. (can only be given in setup.py options)')
+        ('service=', None, 'Systemd service description. (can only be given in setup.py options)'),
+        ('extras=', None, 'Extras to include in Depends: [default: \'\']'),
+
     ]
 
     boolean_options = []
@@ -31,8 +36,12 @@ class sdist_dsc(Command):
         self.package_name = None
         self.debian_distribution = 'unstable'
         self.dist_dir = 'dist'
+        self.python_buildsystem = 'pybuild'
         self.debian_revision = 1
+        self.debian_section = 'python'
+        self.debian_urgency = 'low'
         self.compat = 10
+        self.extras = ''
 
     def finalize_options(self):
         if self.package_name is None:
@@ -52,8 +61,6 @@ class sdist_dsc(Command):
         upstream_version = self.distribution.get_version()
         package_version = '{}-{}'.format(upstream_version, self.debian_revision)
 
-        maintainer = '{} <{}>'.format(self.distribution.get_author(),
-                                      self.distribution.get_author_email())
         now_rfc822 = format_datetime(datetime.now())
 
         dependencies = ['${misc:Depends}', '${python3:Depends}']
@@ -84,20 +91,31 @@ class sdist_dsc(Command):
         template_dir = os.path.join(os.path.dirname(__file__), 'templates')
         env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir))
 
+        data = {
+            'source_name': self.distribution.get_name(),
+            'architecture': architecture,
+            'uploaders': [],
+            'debian_section': self.debian_section,
+            'build_dependencies': build_dependencies,
+            'dependencies': dependencies,
+            'package_name': self.package_name,
+            'description': self.distribution.get_description(),
+            'long_description': self.distribution.get_long_description(),
+            'root_dir': 'debian/{}'.format(self.package_name),
+            'pydeb_version': __version__,
+            'python_buildsystem': self.python_buildsystem,
+            'urgency': self.debian_urgency,
+            'distribution': self.debian_distribution,
+            'time_now': now_rfc822,
+            'package_version': package_version,
+            'author': self.distribution.get_author(),
+            'author_email': self.distribution.get_author_email(),
+            'extras': self.extras
+        }
+
         # Render control file
         with open(os.path.join(debian_dir, 'control'), 'wt') as f:
-            f.write(env.get_template('control').render({
-                'source_name': self.distribution.get_name(),
-                'architecture': architecture,
-                'maintainer': maintainer,
-                'uploaders': [],
-                'debian_section': 'python',
-                'build_dependencies': build_dependencies,
-                'dependencies': dependencies,
-                'package_name': self.package_name,
-                'description': self.distribution.get_description(),
-                'long_description': self.distribution.get_long_description()
-            }))
+            f.write(env.get_template('control').render(data))
 
         # Render compat file
         with open(os.path.join(debian_dir, 'compat'), 'wt') as f:
@@ -105,23 +123,11 @@ class sdist_dsc(Command):
 
         # Render rules file
         with open(os.path.join(debian_dir, 'rules'), 'wt') as f:
-            f.write(env.get_template('rules').render({
-                'root_dir': 'debian/{}'.format(self.package_name),
-                'pydeb_version': __version__,
-                'python_buildsystem': 'pybuild',
-                'time_now': now_rfc822
-            }))
+            f.write(env.get_template('rules').render(data))
+
+        # Render changelog
         with open(os.path.join(debian_dir, 'changelog'), 'wt') as f:
-            f.write(env.get_template('changelog').render({
-                'pydeb_version': __version__,
-                'urgency': 'low',
-                'distribution': self.debian_distribution,
-                'time_now': now_rfc822,
-                'source_name': self.distribution.get_name(),
-                'package_version': package_version,
-                'author': self.distribution.get_author(),
-                'author_email': self.distribution.get_author_email()
-            }))
+            f.write(env.get_template('changelog').render(data))
 
 
 sdist_dsc.description = sdist_dsc.__doc__
@@ -187,16 +193,23 @@ upload_deb.description = upload_deb.__doc__
 class add_extras(Command):
     """Injects requirements from given extras_require-parameters. """
 
-    def run(self):
-        install_command = self.get_finalized_command('install')
-        install_command.distribution.install_requires.append('requests')
+    user_options = [
+        ('extras=', None, 'Extras to include in Depends: (comma-separated)[default: \'\']'),
+    ]
 
     def initialize_options(self):
         self.sign_package = False
         self.no_test = False
+        self.extras = ''
 
     def finalize_options(self):
-        pass
+        self.extras = [e for e in self.extras.split(',') if e]
+
+    def run(self):
+        install_command = self.get_finalized_command('install')
+        for e in self.extras:
+            extras = self.distribution.extras_require[e]
+            install_command.distribution.install_requires.extend(extras)
 
 
 add_extras.description = add_extras.__doc__

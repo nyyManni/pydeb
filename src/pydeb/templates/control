@@ -1,5 +1,5 @@
 Source: {{source_name}}
-Maintainer: {{maintainer}}
+Maintainer: {{author}} <{{author_email}}>
 {% if uploaders -%}Uploaders: {{uploaders|join(', ') + '\n'}}{%- endif -%}
 Section: {{debian_section}}
 Priority: optional
