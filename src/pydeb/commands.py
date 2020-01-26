@@ -10,7 +10,7 @@ import os
 import subprocess
 import jinja2
 
-from ._meta import __version__
+from . import __version__
 
 
 class sdist_dsc(Command):
@@ -33,7 +33,6 @@ class sdist_dsc(Command):
         self.dist_dir = 'dist'
         self.debian_revision = 1
         self.compat = 10
-        self.extras = 'bson'
 
     def finalize_options(self):
         if self.package_name is None:
@@ -123,7 +122,6 @@ class sdist_dsc(Command):
                 'author': self.distribution.get_author(),
                 'author_email': self.distribution.get_author_email()
             }))
-        self.distribution.install_requires.append('bson')
 
 
 sdist_dsc.description = sdist_dsc.__doc__
@@ -184,3 +182,21 @@ class upload_deb(Command):
 
 
 upload_deb.description = upload_deb.__doc__
+
+
+class add_extras(Command):
+    """Injects requirements from given extras_require-parameters. """
+
+    def run(self):
+        install_command = self.get_finalized_command('install')
+        install_command.distribution.install_requires.append('requests')
+
+    def initialize_options(self):
+        self.sign_package = False
+        self.no_test = False
+
+    def finalize_options(self):
+        pass
+
+
+add_extras.description = add_extras.__doc__
