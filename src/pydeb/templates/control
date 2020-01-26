@@ -1,0 +1,15 @@
+Source: {{source_name}}
+Maintainer: {{maintainer}}
+{% if uploaders -%}Uploaders: {{uploaders|join(', ') + '\n'}}{%- endif -%}
+Section: {{debian_section}}
+Priority: optional
+{% if build_dependencies -%}Build-Depends: {{build_dependencies|join(', ') + '\n'}}{%- endif -%}
+Standards-Version: 4.5.0
+
+
+Package: {{package_name}}
+Architecture: {{architecture}}
+{% if dependencies -%}Depends: {{dependencies|join(', ') + '\n'}}{%- endif -%}
+Description: {{description}}
+  {{long_description}}
+

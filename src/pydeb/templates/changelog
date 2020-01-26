@@ -1,0 +1,6 @@
+{{source_name}} ({{package_version}}) {{distribution}}; urgency={{urgency}}
+
+  * source package automatically created by pydeb v{{pydeb_version}}
+
+ -- {{author}} <{{author_email}}>  {{time_now}}
+
